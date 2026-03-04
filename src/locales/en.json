@@ -1,0 +1,37 @@
+{
+    "nav": {
+        "home": "Home",
+        "map": "Map",
+        "community": "Community",
+        "ai_health": "AI Health",
+        "profile": "Profile"
+    },
+    "profile": {
+        "title": "Profile",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service",
+        "logout": "Logout",
+        "my_pets": "My Pets",
+        "my_friends": "My Friends"
+    },
+    "login": {
+        "title_login": "Login",
+        "title_register": "Register",
+        "email_placeholder": "Email or Account ID",
+        "password_placeholder": "Password",
+        "login_btn": "Log In",
+        "register_btn": "Sign Up",
+        "processing": "Processing...",
+        "social_login": "Continue with Social Account",
+        "back_to_login": "Back to Login",
+        "create_account": "Create New Account",
+        "err_email_req": "Please enter Email",
+        "err_email_fmt": "Invalid Email format",
+        "err_id_req": "Please enter Account ID",
+        "err_login_id_req": "Please enter Email or Account ID",
+        "err_pwd_len": "Password must be at least 6 characters",
+        "err_login_fail": "Login failed",
+        "err_network": "Network error, please try again later",
+        "subtitle": "Comprehensive Pet Management & AI Health Analysis Platform"
+    }
+}

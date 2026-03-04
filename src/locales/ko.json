@@ -1,0 +1,37 @@
+{
+    "nav": {
+        "home": "홈",
+        "map": "지도",
+        "community": "커뮤니티",
+        "ai_health": "AI 건강",
+        "profile": "내 정보"
+    },
+    "profile": {
+        "title": "프로필",
+        "privacy": "개인정보 처리방침",
+        "terms": "이용약관",
+        "logout": "로그아웃",
+        "my_pets": "나의 펫",
+        "my_friends": "나의 친구"
+    },
+    "login": {
+        "title_login": "로그인",
+        "title_register": "회원가입",
+        "email_placeholder": "이메일 또는 계정 ID",
+        "password_placeholder": "비밀번호",
+        "login_btn": "로그인",
+        "register_btn": "가입하기",
+        "processing": "처리 중...",
+        "social_login": "소셜 계정으로 계속하기",
+        "back_to_login": "로그인으로 돌아가기",
+        "create_account": "새 계정 만들기",
+        "err_email_req": "이메일을 입력해주세요",
+        "err_email_fmt": "잘못된 이메일 형식",
+        "err_id_req": "계정 ID를 입력해주세요",
+        "err_login_id_req": "이메일 또는 계정 ID를 입력해주세요",
+        "err_pwd_len": "비밀번호는 6자 이상이어야 합니다",
+        "err_login_fail": "로그인 실패",
+        "err_network": "네트워크 오류, 나중에 다시 시도해주세요",
+        "subtitle": "종합 반려동물 관리 및 AI 건강 분석 플랫폼"
+    }
+}

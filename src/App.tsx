@@ -10,7 +10,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import MapPage from './pages/Map';
-import Community from './pages/Community';
+import { Community } from './pages/Community';
 import AIHealth from './pages/AIHealth';
 import Profile from './pages/Profile';
 import Privacy from './pages/Privacy';

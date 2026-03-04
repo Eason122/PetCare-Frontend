@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { User, LogOut, Crown, Plus, Edit2, Trash2, ChevronRight, Settings, X, Shield, FileText, AlertTriangle } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Pet } from '../types';
 
 export default function Profile() {
   const { user, logout, updateUser, deleteAccount, pets, addPet, updatePet, deletePet, setSelectedPetId, friends, removeFriend } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isEditingPet, setIsEditingPet] = useState<string | null>(null);
   const [isAddingPet, setIsAddingPet] = useState(false);
 
@@ -284,7 +286,7 @@ export default function Profile() {
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 px-4 pt-8 pb-6 shadow-sm z-10 rounded-b-3xl transition-colors">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">個人檔案</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('profile.title')}</h1>
           <button
             onClick={() => { setIsAccountSettingsOpen(!isAccountSettingsOpen); setEditName(user?.name || ''); }}
             className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -367,7 +369,7 @@ export default function Profile() {
         {/* Pets List */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">我的寵物</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('profile.my_pets')}</h3>
             <button
               onClick={() => setIsAddingPet(true)}
               className="flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
@@ -421,7 +423,7 @@ export default function Profile() {
         {/* Friends List */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">我的好友</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('profile.my_friends')}</h3>
           </div>
           <div className="space-y-3">
             {friends && friends.length > 0 ? (
@@ -469,14 +471,14 @@ export default function Profile() {
           <Link to="/privacy" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center text-gray-700 dark:text-gray-300">
               <Shield className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500" />
-              <span className="font-medium">隱私權政策</span>
+              <span className="font-medium">{t('profile.privacy')}</span>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </Link>
           <Link to="/terms" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center text-gray-700 dark:text-gray-300">
               <FileText className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500" />
-              <span className="font-medium">服務條款</span>
+              <span className="font-medium">{t('profile.terms')}</span>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </Link>
@@ -486,7 +488,7 @@ export default function Profile() {
           >
             <div className="flex items-center">
               <LogOut className="w-5 h-5 mr-3" />
-              <span className="font-medium">登出</span>
+              <span className="font-medium">{t('profile.logout')}</span>
             </div>
           </button>
         </div>

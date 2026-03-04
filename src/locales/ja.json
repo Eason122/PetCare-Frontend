@@ -1,0 +1,37 @@
+{
+    "nav": {
+        "home": "ホーム",
+        "map": "マップ",
+        "community": "コミュニティ",
+        "ai_health": "AI分析",
+        "profile": "マイページ"
+    },
+    "profile": {
+        "title": "プロフィール",
+        "privacy": "プライバシーポリシー",
+        "terms": "利用規約",
+        "logout": "ログアウト",
+        "my_pets": "ペット一覧",
+        "my_friends": "友達一覧"
+    },
+    "login": {
+        "title_login": "ログイン",
+        "title_register": "新規登録",
+        "email_placeholder": "メールアドレス または ID",
+        "password_placeholder": "パスワード",
+        "login_btn": "ログイン",
+        "register_btn": "新規登録",
+        "processing": "処理中...",
+        "social_login": "SNSアカウントで続ける",
+        "back_to_login": "ログインに戻る",
+        "create_account": "新しいアカウントを作成する",
+        "err_email_req": "メールアドレスを入力してください",
+        "err_email_fmt": "無効なメール形式",
+        "err_id_req": "アカウントIDを入力してください",
+        "err_login_id_req": "メールアドレスまたはアカウントIDを入力してください",
+        "err_pwd_len": "パスワードは6文字以上必要です",
+        "err_login_fail": "ログインに失敗しました",
+        "err_network": "ネットワークエラー、後でもう一度お試しください",
+        "subtitle": "包括的なペット管理およびAI健康分析プラットフォーム"
+    }
+}

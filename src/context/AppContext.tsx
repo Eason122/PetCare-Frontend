@@ -25,6 +25,7 @@ interface AppContextType {
   addPost: (post: { content: string, imageUrl?: string }) => Promise<void>;
   likePost: (postId: string) => Promise<void>;
   commentPost: (postId: string, content: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
 
   appointments: Appointment[];
   fetchAppointments: () => Promise<void>;
@@ -43,6 +44,9 @@ interface AppContextType {
 
   token: string | null;
 
+  /** 黑暗模式 (僅狀態，由系統自動控制) */
+  isDarkMode: boolean;
+
   /** 全域 Toast 通知 */
   toasts: Toast[];
   showToast: (message: string, type?: Toast['type']) => void;
@@ -60,6 +64,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [healthRecords, setHealthRecords] = useState<HealthRecord[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
+
+  // 黑暗模式狀態自動偵測
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+
+    setIsDarkMode(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // 監聽 isDarkMode 變化，更新 <html> class
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const authHeaders = {
@@ -339,6 +369,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  /**
+   * 刪除自己的貼文
+   */
+  const deletePost = async (postId: string) => {
+    try {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      });
+      if (res.ok) {
+        setPosts(posts.filter(p => p.id !== postId));
+        showToast('貼文已刪除', 'info');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('刪除失敗', 'error');
+    }
+  };
+
   const likePost = async (postId: string) => {
     try {
       const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/posts/${postId}/like`, {
@@ -466,11 +515,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       user, login, logout, upgradeToVip, updateUser, deleteAccount,
       pets, selectedPetId, setSelectedPetId, addPet, updatePet, deletePet,
       aiHistory, addAIAnalysis, getRemainingAILimit,
-      posts, fetchPosts, addPost, likePost, commentPost,
+      posts, fetchPosts, addPost, likePost, commentPost, deletePost,
       appointments, fetchAppointments, addAppointment, deleteAppointment,
       healthRecords, fetchHealthRecords, addHealthRecord, deleteHealthRecord,
       friends, fetchFriends, addFriend, removeFriend,
       token,
+      isDarkMode,
       toasts, showToast
     }}>
       {children}

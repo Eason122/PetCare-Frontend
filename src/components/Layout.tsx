@@ -3,6 +3,7 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { Home, Map, Users, Stethoscope, UserCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useTranslation } from 'react-i18next';
 import BannerAd from './BannerAd';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
@@ -10,12 +11,14 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 export default function Layout() {
+  const { t } = useTranslation();
+
   const navItems = [
-    { to: '/', icon: Home, label: '首頁' },
-    { to: '/map', icon: Map, label: '地圖' },
-    { to: '/community', icon: Users, label: '社群' },
-    { to: '/ai-health', icon: Stethoscope, label: 'AI分析' },
-    { to: '/profile', icon: UserCircle, label: '我的' },
+    { to: '/', icon: Home, label: t('nav.home') },
+    { to: '/map', icon: Map, label: t('nav.map') },
+    { to: '/community', icon: Users, label: t('nav.community') },
+    { to: '/ai-health', icon: Stethoscope, label: t('nav.ai_health') },
+    { to: '/profile', icon: UserCircle, label: t('nav.profile') },
   ];
 
   return (

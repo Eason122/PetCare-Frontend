@@ -1,0 +1,37 @@
+{
+    "nav": {
+        "home": "首頁",
+        "map": "地圖",
+        "community": "社群",
+        "ai_health": "AI分析",
+        "profile": "我的"
+    },
+    "profile": {
+        "title": "個人檔案",
+        "privacy": "隱私權政策",
+        "terms": "服務條款",
+        "logout": "登出",
+        "my_pets": "我的寵物",
+        "my_friends": "我的好友"
+    },
+    "login": {
+        "title_login": "登入",
+        "title_register": "註冊",
+        "email_placeholder": "輸入 Email 或帳戶 ID",
+        "password_placeholder": "密碼",
+        "login_btn": "登入",
+        "register_btn": "註冊",
+        "processing": "處理中...",
+        "social_login": "使用社交帳號繼續",
+        "back_to_login": "返回登入",
+        "create_account": "建立新帳號（Email 或 帳戶 ID）",
+        "err_email_req": "請輸入 Email",
+        "err_email_fmt": "Email 格式不正確",
+        "err_id_req": "請輸入帳戶 ID",
+        "err_login_id_req": "請輸入 Email 或帳戶 ID",
+        "err_pwd_len": "密碼至少需要 6 個字元",
+        "err_login_fail": "登入失敗",
+        "err_network": "網路錯誤，請稍後再試",
+        "subtitle": "全方位寵物管理與AI健康分析平台"
+    }
+}
