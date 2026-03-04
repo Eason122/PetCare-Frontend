@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# dotenv 環境變數檔案 (保護金鑰等敏感資訊)
+.env
+.env.*
+!.env.example
