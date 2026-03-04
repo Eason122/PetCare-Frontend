@@ -75,7 +75,7 @@ export default function Community() {
   useEffect(() => {
     if (activeTab === 'chat' && selectedFriendId && token) {
       // Fetch history for selected friend
-      fetch(`/api/messages?friendId=${selectedFriendId}`, {
+      fetch(import.meta.env.VITE_API_BASE_URL + `/api/messages?friendId=${selectedFriendId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -140,7 +140,7 @@ export default function Community() {
   const handleSearchUsers = async () => {
     if (!searchQuery.trim()) return;
     try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/users/search?q=${encodeURIComponent(searchQuery)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -171,7 +171,7 @@ export default function Community() {
   const handleReportPost = async () => {
     if (!reportTargetPostId || !reportReason) return;
     try {
-      const res = await fetch(`/api/posts/${reportTargetPostId}/report`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/posts/${reportTargetPostId}/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ export default function Community() {
    */
   const handleBlockUser = async (userId: string) => {
     try {
-      const res = await fetch(`/api/users/${userId}/block`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/users/${userId}/block`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -623,8 +623,8 @@ export default function Community() {
                   key={option.id}
                   onClick={() => setReportReason(option.id)}
                   className={`w-full text-left p-3 rounded-xl border-2 text-sm transition-colors ${reportReason === option.id
-                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-red-300'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-red-300'
                     }`}
                 >
                   {option.label}

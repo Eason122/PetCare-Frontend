@@ -266,7 +266,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePet = async (id: string, petData: Partial<Pet>) => {
     try {
-      const res = await fetch(`/api/pets/${id}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/pets/${id}`, {
         method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify(petData)
@@ -283,7 +283,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const deletePet = async (id: string) => {
     try {
-      const res = await fetch(`/api/pets/${id}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/pets/${id}`, {
         method: 'DELETE',
         headers: authHeaders
       });
@@ -341,7 +341,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const likePost = async (postId: string) => {
     try {
-      const res = await fetch(`/api/posts/${postId}/like`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/posts/${postId}/like`, {
         method: 'POST',
         headers: authHeaders
       });
@@ -355,7 +355,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const commentPost = async (postId: string, content: string) => {
     try {
-      const res = await fetch(`/api/posts/${postId}/comment`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/posts/${postId}/comment`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ content })
@@ -387,7 +387,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteAppointment = async (id: string) => {
     try {
-      const res = await fetch(`/api/appointments/${id}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/appointments/${id}`, {
         method: 'DELETE',
         headers: authHeaders
       });
@@ -418,7 +418,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteHealthRecord = async (id: string) => {
     try {
-      const res = await fetch(`/api/health_records/${id}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/health_records/${id}`, {
         method: 'DELETE',
         headers: authHeaders
       });
@@ -448,7 +448,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const removeFriend = async (friendId: string) => {
     try {
-      const res = await fetch(`/api/friends/${friendId}`, {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/api/friends/${friendId}`, {
         method: 'DELETE',
         headers: authHeaders
       });
