@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Plus, Bell, Activity, Scale, Calendar as CalendarIcon, Lightbulb, Clock, MapPin } from 'lucide-react';
-import { format, addDays, isBefore } from 'date-fns';
+import { format, addDays, isBefore, differenceInYears, differenceInMonths, differenceInDays, subYears, subMonths } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -13,6 +13,24 @@ function getGreeting(): string {
   if (hour < 12) return '早安';
   if (hour < 18) return '午安';
   return '晚安';
+}
+
+/**
+ * 根據生日精確計算寵物年齡（歲、月、日）
+ * @param birthday ISO 日期字串（例如 '2020-06-15'）
+ * @returns 包含 years, months, days 的物件
+ */
+function calculatePetAge(birthday: string): { years: number; months: number; days: number } {
+  const birthDate = new Date(birthday);
+  const today = new Date();
+
+  const years = differenceInYears(today, birthDate);
+  const afterYears = subYears(today, years);
+  const months = differenceInMonths(afterYears, birthDate);
+  const afterMonths = subMonths(afterYears, months);
+  const days = differenceInDays(afterMonths, birthDate);
+
+  return { years, months, days };
 }
 
 export default function Home() {
@@ -240,11 +258,19 @@ export default function Home() {
               <CalendarIcon className="w-5 h-5" />
             </div>
             <span className="text-sm text-gray-500 dark:text-gray-400 mb-1">年齡</span>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              {selectedPet?.birthday ?
-                Math.floor((new Date().getTime() - new Date(selectedPet.birthday).getTime()) / (1000 * 60 * 60 * 24 * 365))
-                : '?'} 歲
-            </span>
+            {selectedPet?.birthday ? (() => {
+              const age = calculatePetAge(selectedPet.birthday);
+              return (
+                <div className="text-center">
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">{age.years} 歲</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 block mt-0.5">
+                    {age.months} 月 {age.days} 天
+                  </span>
+                </div>
+              );
+            })() : (
+              <span className="text-xl font-bold text-gray-900 dark:text-white">? 歲</span>
+            )}
           </div>
         </div>
 

@@ -6,7 +6,7 @@ interface AppContextType {
   login: (token: string, userData: User) => void;
   logout: () => void;
   upgradeToVip: () => Promise<void>;
-  updateUser: (name: string) => Promise<void>;
+  updateUser: (data: { name?: string; avatar?: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
 
   pets: Pet[];
@@ -144,7 +144,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchPets]', e);
+      showToast('無法載入寵物資料，請檢查網路連線', 'error');
     }
   };
 
@@ -155,7 +156,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setAiHistory(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchAIHistory]', e);
+      showToast('無法載入 AI 分析紀錄', 'error');
     }
   };
 
@@ -166,7 +168,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setPosts(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchPosts]', e);
+      showToast('無法載入社群動態', 'error');
     }
   };
 
@@ -177,7 +180,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setAppointments(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchAppointments]', e);
+      showToast('無法載入預約資料', 'error');
     }
   };
 
@@ -188,7 +192,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setHealthRecords(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchHealthRecords]', e);
+      showToast('無法載入健康紀錄', 'error');
     }
   };
 
@@ -199,7 +204,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setFriends(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchFriends]', e);
+      showToast('無法載入好友清單', 'error');
     }
   };
 
@@ -238,20 +244,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * 修改使用者名稱
+   * 修改使用者資料（名稱、大頭照）
    */
-  const updateUser = async (name: string) => {
+  const updateUser = async (data: { name?: string; avatar?: string }) => {
     if (!user) return;
     try {
       const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/api/auth/profile', {
         method: 'PUT',
         headers: authHeaders,
-        body: JSON.stringify({ name })
+        body: JSON.stringify(data)
       });
       if (res.ok) {
-        const data = await res.json();
-        setUser({ ...user, name: data.name });
-        showToast('名稱已更新', 'success');
+        const resData = await res.json();
+        setUser({ ...user, ...data, ...(resData.name ? { name: resData.name } : {}) });
+        showToast('個人資料已更新', 'success');
       }
     } catch (e) {
       console.error(e);

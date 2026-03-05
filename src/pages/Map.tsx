@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Search, Star, Navigation, Phone, Clock, Plus, Loader2, X, ChevronUp, ChevronDown, LocateFixed } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MapPin, Search, Star, Navigation, Phone, Clock, Plus, Loader2, X, ChevronUp, ChevronDown, LocateFixed, RotateCcw } from 'lucide-react';
 import Papa from 'papaparse';
 
 interface Place {
@@ -47,23 +47,54 @@ const DEFAULT_CENTER = { lat: 23.5, lng: 121.0 };
 const DEFAULT_ZOOM = 7;
 const LOCATED_ZOOM = 14;
 
+/**
+ * 計算兩點間距離（公里）
+ * NOTE: 使用 Haversine 公式計算球面距離
+ */
+function getDistanceKm(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/** Bottom Sheet 三段式高度（vh） */
+const SHEET_COLLAPSED = 8;    // 摆疊：只露拖曳把手與計數標題
+const SHEET_HALF = 35;        // 半展開：佔螢幕 35%
+const SHEET_FULL = 55;        // 全展開：佔螢幕 55%
+
 export default function MapPage() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('全部');
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [isListExpanded, setIsListExpanded] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+
+  // Bottom Sheet 狀態
+  const [sheetHeight, setSheetHeight] = useState(SHEET_COLLAPSED);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
+  const isDragging = useRef(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const userMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+
+  /** 是否有任何篩選條件啟用 */
+  const hasActiveFilter = selectedType !== 'all' || selectedRegion !== '全部' || searchQuery.trim() !== '';
 
   /**
    * 動態載入 Google Maps API script
@@ -169,97 +200,94 @@ export default function MapPage() {
   }, []);
 
   /**
-   * 撈取場所資料（僅在使用者選擇篩選條件後觸發）
+   * 頁面載入即自動撈取場所資料
+   * NOTE: 移除舊版「需先選篩選才載入」的限制，改善首次進入體驗
    */
-  const fetchPlaces = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        'https://docs.google.com/spreadsheets/d/1lx9MLgjkuzHCm1CMrVtMxXSz2QuHKm7KLbrctafFcC0/export?format=csv&gid=2128561092'
-      );
-      const csvText = await response.text();
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          'https://docs.google.com/spreadsheets/d/1lx9MLgjkuzHCm1CMrVtMxXSz2QuHKm7KLbrctafFcC0/export?format=csv&gid=2128561092'
+        );
+        const csvText = await response.text();
 
-      Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const parsedPlaces: Place[] = results.data
-            .filter((row: any) => row['status'] === 'approved' || !row['status'])
-            .map((row: any, index: number) => {
-              let type = 'other';
-              const category = row['場所類別'] || '';
-              if (category.includes('醫療') || category.includes('醫院')) type = 'hospital';
-              else if (category.includes('用品') || category.includes('美容')) type = 'store';
-              else if (category.includes('旅館') || category.includes('住宿')) type = 'hotel';
-              else if (category.includes('餐廳') || category.includes('餐飲')) type = 'restaurant';
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const parsedPlaces: Place[] = results.data
+              .filter((row: any) => row['status'] === 'approved' || !row['status'])
+              .map((row: any, index: number) => {
+                let type = 'other';
+                const category = row['場所類別'] || '';
+                if (category.includes('醫療') || category.includes('醫院')) type = 'hospital';
+                else if (category.includes('用品') || category.includes('美容')) type = 'store';
+                else if (category.includes('旅館') || category.includes('住宿')) type = 'hotel';
+                else if (category.includes('餐廳') || category.includes('餐飲')) type = 'restaurant';
 
-              return {
-                id: `place-${index}`,
-                name: row['場所名稱'] || '未知名稱',
-                type,
-                region: row['所在縣市'] || '其他',
-                address: row['完整地址'] || '',
-                googleMapsLink: row['Google Maps 連結'] || '',
-                friendlyPolicy: row['友善政策'] || '',
-                environmentDesc: row['環境描述'] || '',
-                lat: parseFloat(row['緯度']) || undefined,
-                lng: parseFloat(row['經度']) || undefined,
-                rating: '4.5',
-                open: '營業時間請參考 Google Maps',
-                phone: '請參考 Google Maps',
-              };
-            });
-          setPlaces(parsedPlaces);
-          setHasFetched(true);
-          setLoading(false);
-        },
-        error: (error) => {
-          console.error('Error parsing CSV:', error);
-          setLoading(false);
-        },
-      });
-    } catch (error) {
-      console.error('Error fetching places:', error);
-      setLoading(false);
-    }
+                return {
+                  id: `place-${index}`,
+                  name: row['場所名稱'] || '未知名稱',
+                  type,
+                  region: row['所在縣市'] || '其他',
+                  address: row['完整地址'] || '',
+                  googleMapsLink: row['Google Maps 連結'] || '',
+                  friendlyPolicy: row['友善政策'] || '',
+                  environmentDesc: row['環境描述'] || '',
+                  lat: parseFloat(row['緯度']) || undefined,
+                  lng: parseFloat(row['經度']) || undefined,
+                  rating: '4.5',
+                  open: '營業時間請參考 Google Maps',
+                  phone: '請參考 Google Maps',
+                };
+              });
+            setPlaces(parsedPlaces);
+            setLoading(false);
+          },
+          error: (error) => {
+            console.error('Error parsing CSV:', error);
+            setLoading(false);
+          },
+        });
+      } catch (error) {
+        console.error('Error fetching places:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchPlaces();
   }, []);
-
-  /**
-   * 當使用者選擇了非「全部」的篩選條件時，觸發資料撈取
-   */
-  const handleFilterChange = useCallback(
-    (newType: string, newRegion: string) => {
-      const shouldFetch = newType !== 'all' || newRegion !== '全部';
-
-      if (shouldFetch && !hasFetched) {
-        fetchPlaces();
-      }
-
-      // 若選擇了地區，平移地圖到該地區中心
-      if (newRegion !== '全部' && REGION_CENTERS[newRegion] && googleMapRef.current) {
-        googleMapRef.current.panTo(REGION_CENTERS[newRegion]);
-        googleMapRef.current.setZoom(12);
-      }
-    },
-    [hasFetched, fetchPlaces]
-  );
 
   const handleTypeChange = (typeId: string) => {
     setSelectedType(typeId);
-    handleFilterChange(typeId, selectedRegion);
   };
 
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
-    handleFilterChange(selectedType, region);
+    // 若選擇了地區，平移地圖到該地區中心
+    if (region !== '全部' && REGION_CENTERS[region] && googleMapRef.current) {
+      googleMapRef.current.panTo(REGION_CENTERS[region]);
+      googleMapRef.current.setZoom(12);
+    }
   };
 
-  const filteredPlaces = places.filter((place) => {
-    const matchRegion = selectedRegion === '全部' || place.region === selectedRegion;
-    const matchType = selectedType === 'all' || place.type === selectedType;
-    const matchSearch = place.name.includes(searchQuery) || place.address.includes(searchQuery);
-    return matchRegion && matchType && matchSearch;
-  });
+  /** 重置所有篩選條件 */
+  const resetFilters = () => {
+    setSelectedType('all');
+    setSelectedRegion('全部');
+    setSearchQuery('');
+  };
+
+  const filteredPlaces = useMemo(() => {
+    return places.filter((place) => {
+      const matchRegion = selectedRegion === '全部' || place.region === selectedRegion;
+      const matchType = selectedType === 'all' || place.type === selectedType;
+      const q = searchQuery.trim();
+      const matchSearch = !q || place.name.includes(q) || place.address.includes(q);
+      return matchRegion && matchType && matchSearch;
+    });
+  }, [places, selectedRegion, selectedType, searchQuery]);
 
   /**
    * 根據場所類型回傳對應標記顏色
@@ -283,6 +311,16 @@ export default function MapPage() {
       default: return '📍';
     }
   };
+
+  /**
+   * 計算場所與使用者之間的距離文字
+   */
+  const getDistanceText = useCallback((place: Place): string | null => {
+    if (!userLocation || !place.lat || !place.lng) return null;
+    const km = getDistanceKm(userLocation.lat, userLocation.lng, place.lat, place.lng);
+    if (km < 1) return `${Math.round(km * 1000)}m`;
+    return `${km.toFixed(1)}km`;
+  }, [userLocation]);
 
   /**
    * 更新地圖上的標記
@@ -335,7 +373,7 @@ export default function MapPage() {
 
       marker.addListener('click', () => {
         setSelectedPlaceId(place.id);
-        setIsListExpanded(true);
+        setSheetHeight(SHEET_HALF);
 
         if (infoWindowRef.current) {
           infoWindowRef.current.setContent(`
@@ -378,14 +416,89 @@ export default function MapPage() {
     }
   };
 
-  /** 是否已選擇篩選條件（非全部） */
-  const hasActiveFilter = selectedType !== 'all' || selectedRegion !== '全部';
+  // --- Bottom Sheet 拖曳邏輯 ---
+  const handleDragStart = useCallback((clientY: number) => {
+    isDragging.current = true;
+    dragStartY.current = clientY;
+    dragStartHeight.current = sheetHeight;
+    document.body.style.userSelect = 'none';
+  }, [sheetHeight]);
+
+  const handleDragMove = useCallback((clientY: number) => {
+    if (!isDragging.current) return;
+    const delta = dragStartY.current - clientY;
+    const viewportH = window.innerHeight;
+    const deltaPercent = (delta / viewportH) * 100;
+    const newHeight = Math.min(SHEET_FULL, Math.max(8, dragStartHeight.current + deltaPercent));
+    setSheetHeight(newHeight);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    isDragging.current = false;
+    document.body.style.userSelect = '';
+    // 吸附到最近的段位
+    setSheetHeight(prev => {
+      if (prev < 18) return SHEET_COLLAPSED;
+      if (prev < 45) return SHEET_HALF;
+      return SHEET_FULL;
+    });
+  }, []);
+
+  // Touch handlers
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    handleDragStart(e.touches[0].clientY);
+  }, [handleDragStart]);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    handleDragMove(e.touches[0].clientY);
+  }, [handleDragMove]);
+
+  const onTouchEnd = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
+
+  // Mouse handlers（桌面開發用）
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => handleDragMove(e.clientY);
+    const onMouseUp = () => handleDragEnd();
+
+    if (isDragging.current) {
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [handleDragMove, handleDragEnd]);
+
+  /** 自動滾動到選中的場所卡片 */
+  useEffect(() => {
+    if (selectedPlaceId && sheetHeight > SHEET_COLLAPSED) {
+      const el = document.getElementById(`place-card-${selectedPlaceId}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedPlaceId, sheetHeight]);
+
+  const isSheetExpanded = sheetHeight > SHEET_COLLAPSED;
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 transition-colors relative">
       {/* Header + Filters */}
       <div className="bg-white dark:bg-gray-800 px-4 pt-8 pb-3 shadow-sm z-20 transition-colors">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">友善空間地圖</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">友善空間地圖</h1>
+          {hasActiveFilter && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              重置篩選
+            </button>
+          )}
+        </div>
 
         {/* Search */}
         <div className="relative mb-3">
@@ -394,11 +507,19 @@ export default function MapPage() {
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+            className="block w-full pl-10 pr-10 py-2.5 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
             placeholder="搜尋醫院、商店或地址..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Type Filters */}
@@ -452,23 +573,6 @@ export default function MapPage() {
           </div>
         )}
 
-        {/* 未選擇篩選條件的提示覆蓋層 */}
-        {!hasActiveFilter && !hasFetched && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px] z-10">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mx-4 text-center max-w-xs">
-              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Search className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                選擇場所類型
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                請先選擇上方的場所類型（醫院、餐廳等）或地區，即可查看友善場所
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* 重新定位按鈕 */}
         <button
           onClick={requestUserLocation}
@@ -487,49 +591,76 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* Collapsible Place List */}
-      {hasFetched && (
+      {/* Bottom Sheet — 觸控友善的可拖曳面板 */}
+      <div
+        ref={sheetRef}
+        className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-20 transition-[height] duration-200 ease-out flex flex-col"
+        style={{
+          height: `${sheetHeight}vh`,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          transitionProperty: isDragging.current ? 'none' : 'height',
+        }}
+      >
+        {/* 拖曳把手 */}
         <div
-          className={`bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 transition-all duration-300 z-20 ${isListExpanded ? 'max-h-[50%]' : 'max-h-16'
-            }`}
+          className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onMouseDown={(e) => handleDragStart(e.clientY)}
         >
-          {/* Toggle Header */}
-          <button
-            onClick={() => setIsListExpanded(!isListExpanded)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm"
-          >
-            <span className="text-gray-600 dark:text-gray-400 font-medium">
+          <div className="flex justify-center pt-2.5 pb-1">
+            <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+          </div>
+
+          {/* 標題列 */}
+          <div className="flex items-center justify-between px-4 py-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               找到{' '}
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold text-base">
                 {filteredPlaces.length}
               </span>{' '}
               個友善場所
             </span>
-            {isListExpanded ? (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
-            )}
-          </button>
+            <button
+              onClick={() => setSheetHeight(isSheetExpanded ? SHEET_COLLAPSED : SHEET_HALF)}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              {isSheetExpanded ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronUp className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </div>
 
-          {/* Place List */}
-          {isListExpanded && (
-            <div className="overflow-y-auto px-4 pb-4 space-y-3" style={{ maxHeight: 'calc(50vh - 48px)' }}>
-              {filteredPlaces.length > 0 ? (
-                filteredPlaces.map((place) => (
-                  <div
-                    key={place.id}
-                    onClick={() => handlePlaceClick(place)}
-                    className={`rounded-2xl p-4 shadow-sm border transition-all cursor-pointer ${selectedPlaceId === place.id
-                      ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md'
-                      }`}
-                  >
-                    <div className="flex justify-between items-start mb-1.5">
-                      <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1">
-                        <span>{getMarkerEmoji(place.type)}</span>
-                        {place.name}
-                      </h3>
+        {/* 場所清單 */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 min-h-0">
+          {filteredPlaces.length > 0 ? (
+            filteredPlaces.map((place) => {
+              const distance = getDistanceText(place);
+              return (
+                <div
+                  key={place.id}
+                  id={`place-card-${place.id}`}
+                  onClick={() => handlePlaceClick(place)}
+                  className={`rounded-2xl p-4 shadow-sm border transition-all cursor-pointer ${selectedPlaceId === place.id
+                    ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md'
+                    : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-1.5">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1 flex-1 min-w-0">
+                      <span className="flex-shrink-0">{getMarkerEmoji(place.type)}</span>
+                      <span className="truncate">{place.name}</span>
+                    </h3>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      {distance && (
+                        <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-lg">
+                          {distance}
+                        </span>
+                      )}
                       <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-lg">
                         <Star className="w-3 h-3 text-yellow-400 fill-current mr-0.5" />
                         <span className="text-xs font-bold text-yellow-700 dark:text-yellow-400">
@@ -537,49 +668,57 @@ export default function MapPage() {
                         </span>
                       </div>
                     </div>
-
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-start text-gray-500 dark:text-gray-400 text-xs">
-                        <MapPin className="w-3 h-3 mr-1.5 mt-0.5 flex-shrink-0" />
-                        <span>{place.address}</span>
-                      </div>
-                      {place.friendlyPolicy && (
-                        <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-1 rounded-lg border border-green-100 dark:border-green-800/50">
-                          🐾 {place.friendlyPolicy}
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigate(place);
-                      }}
-                      className="w-full flex items-center justify-center py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl font-medium text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                    >
-                      <Navigation className="w-3 h-3 mr-1.5" />
-                      導航與評論
-                    </button>
                   </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
-                  <MapPin className="w-10 h-10 mb-3 text-gray-300 dark:text-gray-600" />
-                  <p className="text-sm">找不到符合條件的地點</p>
+
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-start text-gray-500 dark:text-gray-400 text-xs">
+                      <MapPin className="w-3 h-3 mr-1.5 mt-0.5 flex-shrink-0" />
+                      <span>{place.address}</span>
+                    </div>
+                    {place.friendlyPolicy && (
+                      <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs px-2 py-1 rounded-lg border border-green-100 dark:border-green-800/50">
+                        🐾 {place.friendlyPolicy}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNavigate(place);
+                    }}
+                    className="w-full flex items-center justify-center py-2.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-medium text-xs hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-sm"
+                  >
+                    <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                    前往 Google Maps 導航
+                  </button>
                 </div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+              <MapPin className="w-10 h-10 mb-3 text-gray-300 dark:text-gray-600" />
+              <p className="text-sm">找不到符合條件的地點</p>
+              {hasActiveFilter && (
+                <button
+                  onClick={resetFilters}
+                  className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                >
+                  清除所有篩選條件
+                </button>
               )}
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* NOTE: FAB 按鈕位置改為相對於清單上方，避免被廣告+導覽列遮蔽 */}
+      {/* NOTE: FAB 按鈕位置根據 Sheet 高度動態調整 */}
       <a
         href="https://forms.gle/UBuoPzy8Pi8ngoo3A"
         target="_blank"
         rel="noopener noreferrer"
         className="absolute right-4 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all z-30 flex items-center justify-center group"
-        style={{ bottom: hasFetched && isListExpanded ? 'calc(50% + 16px)' : '80px' }}
+        style={{ bottom: `calc(${sheetHeight}vh + 12px)` }}
         title="新增店家"
       >
         <Plus className="w-5 h-5" />

@@ -257,7 +257,7 @@ export default function Payment() {
                                 <button
                                     key={plan.id}
                                     onClick={() => setSelectedPlan(plan.id)}
-                                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all relative ${selectedPlan === plan.id
+                                    className={`w-full text-left p-5 pl-12 rounded-2xl border-2 transition-all relative ${selectedPlan === plan.id
                                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md'
                                         : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300'
                                         }`}
@@ -292,8 +292,8 @@ export default function Payment() {
                                         </span>
                                     )}
 
-                                    {/* 選中指示器 */}
-                                    <div className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === plan.id
+                                    {/* 選中指示器 — 放在左側避免遮擋右側金額 */}
+                                    <div className={`absolute top-5 left-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedPlan === plan.id
                                         ? 'border-indigo-500 bg-indigo-500'
                                         : 'border-gray-300 dark:border-gray-600'
                                         }`}>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { User, LogOut, Crown, Plus, Edit2, Trash2, ChevronRight, Settings, X, Shield, FileText, AlertTriangle } from 'lucide-react';
+import { User, LogOut, Crown, Plus, Edit2, Trash2, ChevronRight, Settings, X, Shield, FileText, AlertTriangle, Camera } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Pet } from '../types';
@@ -83,8 +83,22 @@ export default function Profile() {
 
   const handleSaveName = async () => {
     if (editName.trim() && editName.trim() !== user?.name) {
-      await updateUser(editName.trim());
+      await updateUser({ name: editName.trim() });
     }
+  };
+
+  /** 使用者大頭照上傳 */
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string;
+      // NOTE: 直接使用原始 DataURL，壓縮由後端處理或在此擴充
+      await updateUser({ avatar: dataUrl });
+    };
+    reader.readAsDataURL(file);
   };
 
   /**
@@ -100,7 +114,7 @@ export default function Profile() {
 
   if (isAddingPet || isEditingPet) {
     return (
-      <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 p-4 transition-colors">
+      <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 p-4 pb-36 transition-colors overflow-y-auto">
         <div className="flex items-center justify-between mb-6 pt-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{isEditingPet ? '編輯寵物' : '新增寵物'}</h1>
           <button
@@ -296,8 +310,26 @@ export default function Profile() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg border-4 border-white dark:border-gray-800">
-            {user?.name.charAt(0)}
+          <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+            <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg border-4 border-white dark:border-gray-800">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                  {user?.name.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="absolute inset-0 w-20 h-20 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="w-5 h-5 text-white" />
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={avatarInputRef}
+              onChange={handleAvatarUpload}
+            />
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
@@ -382,8 +414,14 @@ export default function Profile() {
             {pets.map(pet => (
               <div key={pet.id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between group transition-colors">
                 <div className="flex items-center space-x-4 flex-1 cursor-pointer" onClick={() => setSelectedPetId(pet.id)}>
-                  <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold border-2 border-indigo-100 dark:border-indigo-800/50">
-                    {pet.name.charAt(0)}
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 dark:border-indigo-800/50 flex-shrink-0">
+                    {pet.avatar ? (
+                      <img src={pet.avatar} alt={pet.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                        {pet.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h4 className="text-base font-bold text-gray-900 dark:text-white">{pet.name}</h4>
